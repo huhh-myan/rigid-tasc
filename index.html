@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>RIGID-TASC Scorer</title>
+
+<style>
+/* Layout: single narrow column checklist, sticky score bar at the foot, built for a phone held at a workstation */
+:root{
+  --bg:#f3f5f6; --surface:#ffffff; --fg:#14212b; --muted:#5b6b78; --line:#d5dde2;
+  --accent:#0b6e7f; --accent-fg:#ffffff; --yes:#1d7a46; --yes-bg:#e1f2e8; --no:#a8322d; --no-bg:#f8e3e1;
+  --display:'Fraunces',Georgia,serif; --body:'IBM Plex Sans',system-ui,sans-serif; --mono:'IBM Plex Mono',ui-monospace,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0f171d; --surface:#18232b; --fg:#e6edf1; --muted:#93a4b0; --line:#2b3a45;
+  --accent:#4cc1d4; --accent-fg:#062229; --yes:#58c487; --yes-bg:#173626; --no:#ef8a84; --no-bg:#3d1f1e; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f171d; --surface:#18232b; --fg:#e6edf1; --muted:#93a4b0; --line:#2b3a45;
+  --accent:#4cc1d4; --accent-fg:#062229; --yes:#58c487; --yes-bg:#173626; --no:#ef8a84; --no-bg:#3d1f1e; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:16px;line-height:1.45;
+  padding-block:20px 0;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:640px;margin:0 auto}
+h1{font-family:var(--display);font-size:1.7rem;line-height:1.15;margin:0 0 6px;text-wrap:balance}
+.sub{color:var(--muted);margin:0 0 16px;font-size:.95rem}
+h2{font-size:.78rem;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin:26px 0 8px;font-weight:600}
+.timer{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px;flex-wrap:wrap}
+.timer .t{font-family:var(--mono);font-size:1.6rem;font-variant-numeric:tabular-nums;min-width:4.6ch}
+.timer .hint{color:var(--muted);font-size:.85rem;flex:1 1 180px;min-width:0}
+button{font:inherit;cursor:pointer}
+.btn{background:var(--accent);color:var(--accent-fg);border:0;border-radius:8px;padding:10px 16px;font-weight:600;min-height:44px}
+.btn.ghost{background:transparent;color:var(--fg);border:1px solid var(--line)}
+button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.item{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:8px}
+.item .q{display:flex;gap:10px;justify-content:space-between;align-items:flex-start}
+.item .q span:first-child{min-width:0;flex:1}
+.n{font-family:var(--mono);color:var(--muted);margin-right:6px;font-variant-numeric:tabular-nums}
+.w{font-family:var(--mono);font-size:.78rem;color:var(--muted);white-space:nowrap;padding-top:2px}
+.seg{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.seg button{flex:1 1 0;min-width:64px;min-height:44px;border:1px solid var(--line);background:transparent;color:var(--fg);border-radius:8px;font-weight:600}
+.seg button.on-y{background:var(--yes-bg);border-color:var(--yes);color:var(--yes)}
+.seg button.on-n{background:var(--no-bg);border-color:var(--no);color:var(--no)}
+.seg button.on-a{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
+.note{color:var(--muted);font-size:.82rem;margin-top:6px}
+.bar{position:sticky;bottom:0;margin-top:18px;background:var(--surface);border-top:2px solid var(--accent);
+  margin-left:calc(-1 * max(16px,env(safe-area-inset-left,0px)));margin-right:calc(-1 * max(16px,env(safe-area-inset-right,0px)));
+  padding:10px max(16px,env(safe-area-inset-right,0px)) 10px max(16px,env(safe-area-inset-left,0px))}
+.bar .in{max-width:640px;margin:0 auto;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.score{font-family:var(--mono);font-size:2rem;font-weight:600;font-variant-numeric:tabular-nums;line-height:1}
+.score small{font-size:.9rem;color:var(--muted);font-weight:400}
+.meta{color:var(--muted);font-size:.82rem;flex:1 1 150px;min-width:0}
+.ref{margin-top:22px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:.88rem;color:var(--muted)}
+.ref b{color:var(--fg)}
+.ref p{margin:0 0 8px}
+.ref p:last-child{margin:0}
+</style>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;600&display=swap">
+<style>html{color-scheme:light dark}body{margin:0}</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>RIGID-TASC Scorer</h1>
+  <p class="sub">Rigid bronchoscopy intubation and navigation checklist. Mark each step yes or no while you or a partner practise. Weighted score out of 100.</p>
+
+  <div class="timer" role="group" aria-label="Intubation timer">
+    <div class="t" id="tval" aria-live="off">0.0 s</div>
+    <button class="btn" id="tbtn" type="button">Start</button>
+    <div class="hint">Start when the scope enters the mouth, stop at the carina. Stopping sets item 23 (under 60 s).</div>
+  </div>
+
+  <div id="list"></div>
+
+  <div class="ref">
+    <p><b>Reference means from the validation study</b> (30 physicians, manikin): novice 58, intermediate 78, expert 94. These are group averages, not pass marks. The authors argue that 78 is not good enough for a high-risk procedure.</p>
+    <p>Source: Mahmood K, Wahidi MM, Osann KE, Coles K, Shofer SL, Volker EE, Davoudi M. Development of a tool to assess basic competency in the performance of rigid bronchoscopy. Ann Am Thorac Soc 2016;13(4):502–511. doi:10.1513/AnnalsATS.201509-593OC. Checklist reproduced for teaching use; please cite the original paper.</p>
+  </div>
+
+  <div class="bar">
+    <div class="in">
+      <div class="score"><span id="sc">0</span><small> / 100</small></div>
+      <div class="meta" id="meta">0 of 23 items marked</div>
+      <button class="btn ghost" id="reset" type="button">Reset</button>
+    </div>
+  </div>
+</div>
+<script>
+var GROUPS=[
+ {t:"Pre-procedure",items:[[1,"Assembles the bronchoscope correctly",3]]},
+ {t:"Intra-procedure",items:[
+  [2,"Positions the head correctly (hyperextended, lower than the body)",3],
+  [3,"Protects upper and lower lips and teeth with the left (non-dominant) hand",2],
+  [4,"Holds the bronchoscope with the right (dominant) hand",2],
+  [5,"Holds the bronchoscope bevel up",2],
+  [6,"Stabilises the telescope in the barrel with the thumb, no unnecessary movement",3],
+  [7,"Positions the telescope so the whole distal rim of the scope is visible",3],
+  [8,"Positions the rigid suction correctly (not protruding, not too proximal)",3],
+  [9,"Introduces the scope at about 90° and slowly increases the angle to 180° (parallel) while advancing",4],
+  [10,"Follows the tongue and uvula to find the epiglottis",4],
+  [11,"Elevates the epiglottis with the scope",4],
+  [12,"Obtains a full view of the larynx and vocal cords",4],
+  [13,"Avoids contact or injury to the arytenoids",4],
+  [14,"Passes through the cords with a 90° rotation so the bevel is parallel to the cords",4],
+  [15,"Advances the scope further with the bevel down in the trachea",4],
+  [16,"Keeps the scope centred and avoids touching the posterior tracheal wall",5,"Yes only if there were no episodes of contact or trauma."],
+  [17,"Attempts needed to enter the trachea",5,"attempts"],
+  [18,"Positions the upper teeth guard correctly",3]]},
+ {t:"Advanced skills",items:[
+  [19,"Turns the head to the opposite side to enter the right main bronchus",5],
+  [20,"Manipulates the scope into the distal bronchus intermedius",5],
+  [21,"Turns the head to the opposite side to enter the left main bronchus",5],
+  [22,"Manipulates the scope into the distal left main bronchus",5],
+  [23,"Completes mouth to carina in under 60 seconds",8,"time"]]}
+];
+var ans={}, ATT={0:3,1:2,2:1,3:0}, timerMs=0, running=false, t0=0, raf=0, elapsedFinal=null;
+function el(tag,cls,html){var e=document.createElement(tag);if(cls)e.className=cls;if(html!=null)e.innerHTML=html;return e}
+function build(){
+  var list=document.getElementById('list');list.innerHTML='';
+  GROUPS.forEach(function(g){
+    list.appendChild(el('h2',null,g.t));
+    g.items.forEach(function(it){
+      var id=it[0],label=it[1],w=it[2],x=it[3];
+      var card=el('div','item');card.id='i'+id;
+      var wtxt=x==='attempts'?'×'+w+' · max '+(w*3):'['+w+']';
+      card.appendChild(el('div','q','<span><span class="n">'+id+'</span>'+label+'</span><span class="w">'+wtxt+'</span>'));
+      var seg=el('div','seg');
+      if(x==='attempts'){
+        [['1',0],['2',1],['3',2],['>3 / failed',3]].forEach(function(o){
+          var b=el('button',null,o[0]);b.type='button';b.dataset.id=id;b.dataset.v=o[1];b.dataset.kind='att';seg.appendChild(b)});
+      }else{
+        [['Yes',1],['No',0]].forEach(function(o){
+          var b=el('button',null,o[0]);b.type='button';b.dataset.id=id;b.dataset.v=o[1];b.dataset.kind='yn';seg.appendChild(b)});
+      }
+      card.appendChild(seg);
+      if(x&&x!=='attempts'&&x!=='time')card.appendChild(el('div','note',x));
+      if(x==='time')card.appendChild(el('div','note','Set by the timer above, or mark it by hand.'));
+      if(x==='attempts')card.appendChild(el('div','note','1 attempt = 3 points × 5, 2 = 2 × 5, 3 = 1 × 5, more than 3 or failed = 0.'));
+      list.appendChild(card);
+    });
+  });
+}
+function paint(){
+  var total=0,done=0;
+  GROUPS.forEach(function(g){g.items.forEach(function(it){
+    var id=it[0],w=it[2],x=it[3],v=ans[id];
+    var card=document.getElementById('i'+id);
+    card.querySelectorAll('button').forEach(function(b){
+      b.className='';
+      if(v!==undefined&&String(v)===b.dataset.v){
+        b.className=b.dataset.kind==='att'?'on-a':(b.dataset.v==='1'?'on-y':'on-n');
+      }
+    });
+    if(v!==undefined){done++;total+=x==='attempts'?w*ATT[v]:w*v}
+  })});
+  document.getElementById('sc').textContent=total;
+  var m=done+' of 23 items marked';
+  if(elapsedFinal!==null)m+=' · time '+elapsedFinal.toFixed(1)+' s';
+  document.getElementById('meta').textContent=m;
+}
+document.getElementById('list').addEventListener('click',function(e){
+  var b=e.target.closest('button');if(!b)return;
+  ans[b.dataset.id]=Number(b.dataset.v);paint();
+});
+function tick(){
+  var s=(performance.now()-t0)/1000;
+  document.getElementById('tval').textContent=s.toFixed(1)+' s';
+  raf=requestAnimationFrame(tick);
+}
+document.getElementById('tbtn').addEventListener('click',function(){
+  var btn=this;
+  if(!running){
+    running=true;elapsedFinal=null;t0=performance.now();btn.textContent='Stop';tick();
+  }else{
+    running=false;cancelAnimationFrame(raf);
+    var s=(performance.now()-t0)/1000;elapsedFinal=s;
+    document.getElementById('tval').textContent=s.toFixed(1)+' s';
+    ans[23]=s<60?1:0;btn.textContent='Start';paint();
+  }
+});
+document.getElementById('reset').addEventListener('click',function(){
+  ans={};running=false;cancelAnimationFrame(raf);elapsedFinal=null;
+  document.getElementById('tval').textContent='0.0 s';document.getElementById('tbtn').textContent='Start';paint();
+  window.scrollTo(0,0);
+});
+build();paint();
+</script>
+</body>
+</html>
